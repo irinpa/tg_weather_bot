@@ -7,6 +7,12 @@ import org.telegram.telegrambots.exceptions.TelegramApiException;
 import java.util.Optional;
 
 public class TinyHedgehodBot extends TelegramLongPollingBot {
+    private final Send_HTTP_Request weatherApi;
+
+
+    public TinyHedgehodBot() {
+        weatherApi = new Send_HTTP_Request();
+    }
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -33,16 +39,22 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
             Message message = optional.get();
             SendMessage outgoing = null;
 
-            if (message.getLocation() != null) {
-                outgoing = new SendMessage()
-                        .setChatId(message.getChatId())
-                        .setText("Location reply");
-            } else if (message.getText() != null) {
-                outgoing = new SendMessage() // Create a SendMessage object with mandatory fields
-                        .setChatId(message.getChatId())
-                        .setText(message.getText());
+            try {
+                if (message.getLocation() != null) {
+                    String response = weatherApi.getByLocation(message.getLocation().getLatitude(),
+                            message.getLocation().getLongitude());
+                    outgoing = new SendMessage()
+                            .setChatId(message.getChatId())
+                            .setText(response);
+                } else if (message.getText() != null) {
+                    String response = weatherApi.getByText(message.getText());
+                    outgoing = new SendMessage() // Create a SendMessage object with mandatory fields
+                            .setChatId(message.getChatId())
+                            .setText(response);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-
             send(outgoing);
         }
     }
@@ -56,6 +68,7 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
             }
         }
     }
+
 
     @Override
     public String getBotUsername() {
