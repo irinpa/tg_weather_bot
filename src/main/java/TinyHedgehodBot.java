@@ -4,15 +4,37 @@ import org.telegram.telegrambots.api.objects.Update;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class TinyHedgehodBot extends TelegramLongPollingBot {
+
     private final Send_HTTP_Request weatherApi;
+    private final Set<Long> subscriptions;
+    private final ScheduledExecutorService executor;
 
 
     public TinyHedgehodBot() {
         weatherApi = new Send_HTTP_Request();
+        subscriptions = Collections.synchronizedSet(new HashSet<>());
+        executor = Executors.newScheduledThreadPool(1);
+        executor.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("=====");
+                for (Long subscription : subscriptions) {
+                    System.out.println("Subscriber " + subscription);
+                }
+
+            }
+        }, 0, 5, TimeUnit.SECONDS);
     }
+
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -47,10 +69,15 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
                             .setChatId(message.getChatId())
                             .setText(response);
                 } else if (message.getText() != null) {
-                    String response = weatherApi.getByText(message.getText());
-                    outgoing = new SendMessage() // Create a SendMessage object with mandatory fields
-                            .setChatId(message.getChatId())
-                            .setText(response);
+                    Command command = getCommand(message.getText());
+                    if (command != null) {
+                        processCommand(command, message);
+                    } else {
+                        String response = weatherApi.getByText(message.getText());
+                        outgoing = new SendMessage() // Create a SendMessage object with mandatory fields
+                                .setChatId(message.getChatId())
+                                .setText(response);
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -58,6 +85,31 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
             send(outgoing);
         }
     }
+
+    private void processCommand(Command command, Message message) {
+        switch (command) {
+            case subscribe:
+                subscriptions.add(message.getChatId());
+                SendMessage outgoing = new SendMessage() // Create a SendMessage object with mandatory fields
+                        .setChatId(message.getChatId())
+                        .setText("You've just subscribed!");
+                send(outgoing);
+                break;
+            case unsubscribe:
+                break;
+        }
+
+
+    }
+
+    private Command getCommand(String text) {
+        if (text.equals("/subscribe")) {
+            return Command.subscribe;
+        } else {
+            return null;
+        }
+    }
+
 
     private void send(SendMessage outgoing) {
         if (outgoing != null) {
