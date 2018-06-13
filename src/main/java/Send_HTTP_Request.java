@@ -14,19 +14,10 @@ public class Send_HTTP_Request {
 
     private static final String BASEURL = "http://api.openweathermap.org/data/2.5/";
     private static final String CURRENTPATH = "weather";
+    private static final String FORECASTPATH = "forecast";
     private static final String APIIDEND = "&APPID=b7471425f3402223826558883c98da13";
     private static final String CURRENTPARAMS = "&cnt=1&units=metric";
 
-
-/*    public static void main(String[] args) {
-        try {
-            Send_HTTP_Request send_http_request = new Send_HTTP_Request();
-            send_http_request.call_me();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }*/
 
     public CurrentWeather call_me(String query) throws Exception {
         String urlString = BASEURL + CURRENTPATH + "?" + query + CURRENTPARAMS + APIIDEND;
@@ -50,23 +41,15 @@ public class Send_HTTP_Request {
 
         Gson gson = new Gson();
         return gson.fromJson((response.toString()), CurrentWeather.class);
-
-/*        if (currentWeather != null) {
-            System.out.println("City : " + currentWeather.getName());
-
-            List<Weather> weathers = currentWeather.getWeather();
-            Weather weather = weathers.get(0);
-            System.out.println("Condition : " + weather.getDescription());
-
-            Main main = currentWeather.getMain();
-            System.out.println("Temperature : "
-                    + (main.getTemp().toString()) + "°C");
-
-        }*/
     }
 
     public String getByLocation(Float latitude, Float longitude) throws Exception {
         String query = "lat=" + latitude + "&lon=" + longitude;
+        return getByQuery(query);
+    }
+
+    public String getByText(String text) throws Exception {
+        String query = "q=" + text;
         return getByQuery(query);
     }
 
@@ -76,15 +59,10 @@ public class Send_HTTP_Request {
         Weather weather = weathers.get(0);
         Main main = currentWeather.getMain();
         StringBuilder sb = new StringBuilder();
-        return sb.append("City : " + currentWeather.getName()).append("\n")
-                .append("Condition : " + weather.getDescription()).append("\n")
-                .append("Temperature : " + (main.getTemp().toString()) + "°C")
+        return sb.append("City: " + currentWeather.getName()).append("\n")
+                .append("Condition: " + weather.getDescription()).append("\n")
+                .append("Temperature: " + (main.getTemp().toString()) + "°C")
                 .toString();
-    }
-
-    public String getByText(String text) throws Exception {
-        String query = "q=" + text;
-        return getByQuery(query);
     }
 }
 

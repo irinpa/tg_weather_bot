@@ -30,7 +30,6 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
                 for (Long subscription : subscriptions) {
                     System.out.println("Subscriber " + subscription);
                 }
-
             }
         }, 0, 5, TimeUnit.SECONDS);
     }
@@ -39,23 +38,6 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         Optional<Message> optional = Optional.ofNullable(update.getMessage());
-
-        // We check if the update has a message and the message has text
-//        optional.ifPresent(message -> {
-//            SendMessage outgoing = null;
-//
-//            if (message.getLocation() != null) {
-//                outgoing = new SendMessage()
-//                        .setChatId(message.getChatId())
-//                        .setText("Location reply");
-//            } else if (message.getText() != null) {
-//                outgoing = new SendMessage() // Create a SendMessage object with mandatory fields
-//                        .setChatId(message.getChatId())
-//                        .setText(message.getText());
-//            }
-//
-//            send(outgoing);
-//        });
 
         if (optional.isPresent()) {
             Message message = optional.get();
@@ -74,7 +56,7 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
                         processCommand(command, message);
                     } else {
                         String response = weatherApi.getByText(message.getText());
-                        outgoing = new SendMessage() // Create a SendMessage object with mandatory fields
+                        outgoing = new SendMessage()
                                 .setChatId(message.getChatId())
                                 .setText(response);
                     }
@@ -90,21 +72,27 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
         switch (command) {
             case subscribe:
                 subscriptions.add(message.getChatId());
-                SendMessage outgoing = new SendMessage() // Create a SendMessage object with mandatory fields
+                SendMessage outgoing = new SendMessage()
                         .setChatId(message.getChatId())
-                        .setText("You've just subscribed!");
+                        .setText("Congrats!");
                 send(outgoing);
+
                 break;
             case unsubscribe:
+                subscriptions.remove(message.getChatId());
+                outgoing = new SendMessage()
+                        .setChatId(message.getChatId())
+                        .setText("Sorry to see you leave :(");
+                send(outgoing);
                 break;
         }
-
-
     }
 
     private Command getCommand(String text) {
         if (text.equals("/subscribe")) {
             return Command.subscribe;
+        } else if (text.equals("/unsubscribe")) {
+            return Command.unsubscribe;
         } else {
             return null;
         }
@@ -114,7 +102,7 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
     private void send(SendMessage outgoing) {
         if (outgoing != null) {
             try {
-                execute(outgoing); // Call method to send the message
+                execute(outgoing);
             } catch (TelegramApiException e) {
                 e.printStackTrace();
             }
