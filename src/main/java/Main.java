@@ -1,3 +1,4 @@
+import com.weather.TinyHedgehogBot;
 import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.TelegramBotsApi;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
@@ -10,7 +11,7 @@ public class Main {
         TelegramBotsApi botsApi = new TelegramBotsApi();
 
         try {
-            TinyHedgehodBot bot = new TinyHedgehodBot();
+            TinyHedgehogBot bot = new TinyHedgehogBot();
             botsApi.registerBot(bot);
         } catch (TelegramApiException e) {
             e.printStackTrace();

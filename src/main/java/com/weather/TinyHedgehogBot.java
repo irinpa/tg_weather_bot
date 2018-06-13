@@ -1,35 +1,41 @@
+package com.weather;
+
 import org.telegram.telegrambots.api.methods.send.SendMessage;
 import org.telegram.telegrambots.api.objects.Message;
 import org.telegram.telegrambots.api.objects.Update;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class TinyHedgehodBot extends TelegramLongPollingBot {
+public class TinyHedgehogBot extends TelegramLongPollingBot {
+    private final WeatherApiClient weatherApi;
+    private final Map<Long, String> subscriptions;
 
-    private final Send_HTTP_Request weatherApi;
-    private final Set<Long> subscriptions;
-    private final ScheduledExecutorService executor;
+    public TinyHedgehogBot() {
+        weatherApi = new WeatherApiClient();
+        subscriptions = new ConcurrentHashMap<>();
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+        executor.scheduleAtFixedRate(() -> {
+            System.out.println("=====");
 
-
-    public TinyHedgehodBot() {
-        weatherApi = new Send_HTTP_Request();
-        subscriptions = Collections.synchronizedSet(new HashSet<>());
-        executor = Executors.newScheduledThreadPool(1);
-        executor.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                System.out.println("=====");
-                for (Long subscription : subscriptions) {
-                    System.out.println("Subscriber " + subscription);
+            for (Map.Entry<Long, String> entry : subscriptions.entrySet()) {
+                String forecast = null;
+                try {
+                    forecast = weatherApi.getForecastByText(entry.getValue());
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
+                SendMessage message = new SendMessage().setChatId(entry.getKey()).setText(forecast);
+                send(message);
+
+                System.out.println("Subscriber " + entry.getKey() + " for " + entry.getValue());
+
             }
         }, 0, 5, TimeUnit.SECONDS);
     }
@@ -45,7 +51,7 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
 
             try {
                 if (message.getLocation() != null) {
-                    String response = weatherApi.getByLocation(message.getLocation().getLatitude(),
+                    String response = weatherApi.getWeatherByLocation(message.getLocation().getLatitude(),
                             message.getLocation().getLongitude());
                     outgoing = new SendMessage()
                             .setChatId(message.getChatId())
@@ -55,7 +61,7 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
                     if (command != null) {
                         processCommand(command, message);
                     } else {
-                        String response = weatherApi.getByText(message.getText());
+                        String response = weatherApi.getWeatherByText(message.getText());
                         outgoing = new SendMessage()
                                 .setChatId(message.getChatId())
                                 .setText(response);
@@ -71,10 +77,10 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
     private void processCommand(Command command, Message message) {
         switch (command) {
             case subscribe:
-                subscriptions.add(message.getChatId());
+                subscriptions.put(message.getChatId(), topic);
                 SendMessage outgoing = new SendMessage()
                         .setChatId(message.getChatId())
-                        .setText("Congrats!");
+                        .setText("Congratulations! You have just subscribed to" + topic + "forecast");
                 send(outgoing);
 
                 break;
@@ -88,8 +94,11 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
         }
     }
 
+    // "/subscribe london"
     private Command getCommand(String text) {
-        if (text.equals("/subscribe")) {
+        if (text.startsWith("/subscribe")) {
+            // TODO return new Subscription(command, topic)
+            String topic = text.substring(11);
             return Command.subscribe;
         } else if (text.equals("/unsubscribe")) {
             return Command.unsubscribe;
