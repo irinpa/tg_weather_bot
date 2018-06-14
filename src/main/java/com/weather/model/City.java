@@ -17,6 +17,18 @@ public class City {
     @SerializedName("country")
     @Expose
     private String country;
+
+    @Override
+    public String toString() {
+        return "City{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", coord=" + coord +
+                ", country='" + country + '\'' +
+                ", population=" + population +
+                '}';
+    }
+
     @SerializedName("population")
     @Expose
     private long population;

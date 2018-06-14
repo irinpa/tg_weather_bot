@@ -18,7 +18,7 @@ public class Forecast {
     private long cnt;
     @SerializedName("list")
     @Expose
-    private List<CurrentWeather> list = null;
+    private List<TimeSlotWeather> list = null;
     @SerializedName("city")
     @Expose
     private City city;
@@ -47,11 +47,11 @@ public class Forecast {
         this.cnt = cnt;
     }
 
-    public List<CurrentWeather> getList() {
+    public List<TimeSlotWeather> getList() {
         return list;
     }
 
-    public void setList(List<CurrentWeather> list) {
+    public void setList(List<TimeSlotWeather> list) {
         this.list = list;
     }
 

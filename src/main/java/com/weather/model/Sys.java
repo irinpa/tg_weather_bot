@@ -8,6 +8,19 @@ public class Sys {
     @SerializedName("type")
     @Expose
     private Integer type;
+
+    @Override
+    public String toString() {
+        return "Sys{" +
+                "type=" + type +
+                ", id=" + id +
+                ", message=" + message +
+                ", country='" + country + '\'' +
+                ", sunrise=" + sunrise +
+                ", sunset=" + sunset +
+                '}';
+    }
+
     @SerializedName("id")
     @Expose
     private Integer id;

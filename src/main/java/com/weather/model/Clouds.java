@@ -13,6 +13,13 @@ public class Clouds {
         return all;
     }
 
+    @Override
+    public String toString() {
+        return "Clouds{" +
+                "all=" + all +
+                '}';
+    }
+
     public void setAll(Integer all) {
         this.all = all;
     }

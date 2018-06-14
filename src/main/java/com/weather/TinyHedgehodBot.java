@@ -13,31 +13,33 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class TinyHedgehogBot extends TelegramLongPollingBot {
+public class TinyHedgehodBot extends TelegramLongPollingBot {
     private final WeatherApiClient weatherApi;
     private final Map<Long, String> subscriptions;
 
-    public TinyHedgehogBot() {
+    public TinyHedgehodBot() {
         weatherApi = new WeatherApiClient();
         subscriptions = new ConcurrentHashMap<>();
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
         executor.scheduleAtFixedRate(() -> {
-            System.out.println("=====");
+//            System.out.println("=====");
 
             for (Map.Entry<Long, String> entry : subscriptions.entrySet()) {
-                String forecast = null;
                 try {
-                    forecast = weatherApi.getForecastByText(entry.getValue());
+                    String forecast = weatherApi.getForecastByText(entry.getValue());
+
+                    SendMessage message = new SendMessage()
+                            .setChatId(entry.getKey())
+                            .setText(forecast);
+
+                    send(message);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                SendMessage message = new SendMessage().setChatId(entry.getKey()).setText(forecast);
-                send(message);
 
-                System.out.println("Subscriber " + entry.getKey() + " for " + entry.getValue());
-
+//                System.out.println("Subscriber " + entry.getKey() + " for " + entry.getValue());
             }
-        }, 0, 5, TimeUnit.SECONDS);
+        }, 0, 30, TimeUnit.SECONDS);
     }
 
 
@@ -57,9 +59,9 @@ public class TinyHedgehogBot extends TelegramLongPollingBot {
                             .setChatId(message.getChatId())
                             .setText(response);
                 } else if (message.getText() != null) {
-                    Command command = getCommand(message.getText());
-                    if (command != null) {
-                        processCommand(command, message);
+                    Subscription subscription = getCommand(message.getText());
+                    if (subscription != null) {
+                        processCommand(subscription, message);
                     } else {
                         String response = weatherApi.getWeatherByText(message.getText());
                         outgoing = new SendMessage()
@@ -74,13 +76,13 @@ public class TinyHedgehogBot extends TelegramLongPollingBot {
         }
     }
 
-    private void processCommand(Command command, Message message) {
-        switch (command) {
+    private void processCommand(Subscription subscription, Message message) {
+        switch (subscription.getCommand()) {
             case subscribe:
-                subscriptions.put(message.getChatId(), topic);
+                subscriptions.put(message.getChatId(), subscription.getTopic());
                 SendMessage outgoing = new SendMessage()
                         .setChatId(message.getChatId())
-                        .setText("Congratulations! You have just subscribed to" + topic + "forecast");
+                        .setText("Congratulations! You have just subscribed to " + subscription.getTopic() + " weather forecast");
                 send(outgoing);
 
                 break;
@@ -95,13 +97,16 @@ public class TinyHedgehogBot extends TelegramLongPollingBot {
     }
 
     // "/subscribe london"
-    private Command getCommand(String text) {
+    private Subscription getCommand(String text) {
         if (text.startsWith("/subscribe")) {
-            // TODO return new Subscription(command, topic)
+            // TODO validate text for length
+            // send warning instead of subscription
             String topic = text.substring(11);
-            return Command.subscribe;
+            return new Subscription(Command.subscribe, topic);
+            /*return Command.subscribe;*/
         } else if (text.equals("/unsubscribe")) {
-            return Command.unsubscribe;
+            return new Subscription(Command.unsubscribe, null);
+           /* return Command.unsubscribe;*/
         } else {
             return null;
         }

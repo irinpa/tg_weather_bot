@@ -1,23 +1,24 @@
 package com.weather;
 
 import com.google.gson.Gson;
-import com.weather.model.CurrentWeather;
-import com.weather.model.Forecast;
-import com.weather.model.Main;
-import com.weather.model.Weather;
+import com.weather.model.*;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 public class WeatherApiClient {
     private static final String BASEURL = "http://api.openweathermap.org/data/2.5/";
-    private static final String CURRENTPATH = "weather";
-    private static final String FORECASTPATH = "forecast";
+    private static final String CURRENTWEATHERPATH = "weather?cnt=1&";
+    private static final String FORECASTPATH = "forecast?cnt=40&";
     private static final String APIIDEND = "&APPID=b7471425f3402223826558883c98da13";
-    private static final String CURRENTPARAMS = "&cnt=1&units=metric";
+    private static final String UNITMETRIC = "&units=metric";
     private Gson gson;
 
     public WeatherApiClient() {
@@ -25,8 +26,8 @@ public class WeatherApiClient {
     }
 
     public <T> T getResponseFromOWM(String query, Class<T> clazz) throws Exception {
-        // TODO weather vs forecast url + ?
-        String urlString = BASEURL + CURRENTPATH + "?" + query + CURRENTPARAMS + APIIDEND;
+
+        String urlString = BASEURL + query + UNITMETRIC + APIIDEND;
 
         URL url = new URL(urlString);
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
@@ -47,29 +48,31 @@ public class WeatherApiClient {
     }
 
     public String getWeatherByLocation(Float latitude, Float longitude) throws Exception {
-        String query = CURRENTPATH + "lat=" + latitude + "&lon=" + longitude;
-        return getByQuery(query);
+        String query = CURRENTWEATHERPATH + "lat=" + latitude + "&lon=" + longitude;
+        return getCurrentWeatherByQuery(query);
     }
 
     public String getWeatherByText(String text) throws Exception {
-        String query = CURRENTPATH + "q=" + text;
-        return getByQuery(query);
+        String query = CURRENTWEATHERPATH + "q=" + text;
+        return getCurrentWeatherByQuery(query);
     }
 
-    public String getForecastByText(String text) throws Exception {
-        String query = FORECASTPATH + "q=" + text;
+    public String getForecastByText(String topic) throws Exception {
+        String query = FORECASTPATH + "q=" + topic;
+        return getForecastByQuery(query);
+    }
+
+    public String getForecastByLocation(Float latitude, Float longitude) throws Exception {
+        String query = FORECASTPATH + "lat=" + latitude + "&lon=" + longitude;
+        return getForecastByQuery(query);
+    }
+
+    private String getForecastByQuery(String query) throws Exception {
         Forecast forecast = getResponseFromOWM(query, Forecast.class);
-        List<Weather> weathers = forecast.getWeather();
-        Weather weather = weathers.get(0);  // TODO why always 0
-        Main main = forecast.getMain();
-        StringBuilder sb = new StringBuilder();
-        return sb.append("City: " + forecast.getName()).append("\n")
-                .append("Condition: " + weather.getDescription()).append("\n")
-                .append("Temperature: " + (main.getTemp().toString()) + "°C")
-                .toString();
+        return forecastToString(forecast);
     }
 
-    private String getByQuery(String query) throws Exception {
+    private String getCurrentWeatherByQuery(String query) throws Exception {
         CurrentWeather currentWeather = getResponseFromOWM(query, CurrentWeather.class);
         return weatherToString(currentWeather);
     }
@@ -79,10 +82,56 @@ public class WeatherApiClient {
         Weather weather = weathers.get(0);  // TODO why always 0
         Main main = currentWeather.getMain();
         StringBuilder sb = new StringBuilder();
-        return sb.append("City: " + currentWeather.getName()).append("\n")
-                .append("Condition: " + weather.getDescription()).append("\n")
+        return sb.append("Current weather for: " + currentWeather.getName()).append("\n")
+                .append("Weather: " + weather.getDescription()).append("\n")
                 .append("Temperature: " + (main.getTemp().toString()) + "°C")
                 .toString();
+    }
+
+    private String forecastToString(Forecast forecast) {
+        List<TimeSlotWeather> forecastList = forecast.getList();
+
+        List<List<TimeSlotWeather>> weatherByDays = groupForecastByDays(forecastList);
+
+//        System.out.println("Forecast: " + weatherByDays.toString());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Forecast for tomorrow in: " + forecast.getCity().getName()).append("\n");
+        for (TimeSlotWeather weatherByDay : weatherByDays.get(1)) {
+            ZonedDateTime time = getZonedDateTime(weatherByDay);
+
+            sb.append("At ").append(time.getHour()).append("\n");
+            sb.append("Weather: " + weatherByDay.getWeather().get(0).getDescription()).append("\n");
+            sb.append("Temperature: " + (weatherByDay.getMain().getTemp().toString()) + "°C");
+            sb.append("\n\n");
+        }
+
+        return sb.toString();
+    }
+
+    private List<List<TimeSlotWeather>> groupForecastByDays(List<TimeSlotWeather> forecastList) {
+        List<List<TimeSlotWeather>> weatherByDays = new ArrayList<>();
+        ZonedDateTime lastTime = null;
+        for (TimeSlotWeather weather : forecastList) {
+            System.out.println("slot");
+            ZonedDateTime time = getZonedDateTime(weather);
+            if (lastTime == null || time.getDayOfYear() != lastTime.getDayOfYear()) {
+                List<TimeSlotWeather> newDay = new ArrayList<>();
+                newDay.add(weather);
+                weatherByDays.add(newDay);
+                System.out.println("new day");
+            } else {
+                System.out.println("same day");
+                List<TimeSlotWeather> currentDay = weatherByDays.get(weatherByDays.size() - 1);
+                currentDay.add(weather);
+            }
+            lastTime = time;
+        }
+        return weatherByDays;
+    }
+
+    private ZonedDateTime getZonedDateTime(TimeSlotWeather weatherByDay) {
+        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(weatherByDay.getDt()), ZoneId.systemDefault());
     }
 }
 
