@@ -53,20 +53,31 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
 
             try {
                 if (message.getLocation() != null) {
-                    String response = weatherApi.getWeatherByLocation(message.getLocation().getLatitude(),
+
+                    StringBuilder response = new StringBuilder();
+                    response.append(weatherApi.getWeatherByLocation(message.getLocation().getLatitude(),
+                            message.getLocation().getLongitude())).append("\n")
+                            .append(weatherApi.getForecastByLocation(message.getLocation().getLatitude(),
+                                    message.getLocation().getLongitude()));
+                    /*String response1 = weatherApi.getWeatherByLocation(message.getLocation().getLatitude(),
                             message.getLocation().getLongitude());
+                    String response2 = weatherApi.getForecastByLocation((message.getLocation().getLatitude(),
+                            message.getLocation().getLongitude());*/
                     outgoing = new SendMessage()
                             .setChatId(message.getChatId())
-                            .setText(response);
+                            .setText(String.valueOf(response));
                 } else if (message.getText() != null) {
                     Subscription subscription = getCommand(message.getText());
                     if (subscription != null) {
                         processCommand(subscription, message);
                     } else {
-                        String response = weatherApi.getWeatherByText(message.getText());
+                        StringBuilder response = new StringBuilder();
+                        response.append(weatherApi.getWeatherByText(message.getText())).append("\n")
+                                .append(weatherApi.getForecastByText(message.getText()));
+                        /*String response = weatherApi.getWeatherByText(message.getText());*/
                         outgoing = new SendMessage()
                                 .setChatId(message.getChatId())
-                                .setText(response);
+                                .setText(String.valueOf(response));
                     }
                 }
             } catch (Exception e) {
@@ -82,7 +93,7 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
                 subscriptions.put(message.getChatId(), subscription.getTopic());
                 SendMessage outgoing = new SendMessage()
                         .setChatId(message.getChatId())
-                        .setText("Congratulations! You have just subscribed to " + subscription.getTopic() + " weather forecast");
+                        .setText("Congratulations! You have just subscribed to " + subscription.getTopic() + " weather forecast.");
                 send(outgoing);
 
                 break;

@@ -82,9 +82,9 @@ public class WeatherApiClient {
         Weather weather = weathers.get(0);  // TODO why always 0
         Main main = currentWeather.getMain();
         StringBuilder sb = new StringBuilder();
-        return sb.append("Current weather for: " + currentWeather.getName()).append("\n")
-                .append("Weather: " + weather.getDescription()).append("\n")
-                .append("Temperature: " + (main.getTemp().toString()) + "°C")
+        return sb.append("Current weather for " + currentWeather.getName()).append(":\n\n")
+                .append("Condition: " + weather.getDescription()).append("\n")
+                .append("Temperature: " + (main.getTemp().toString()) + "°C").append("\n\n")
                 .toString();
     }
 
@@ -96,12 +96,12 @@ public class WeatherApiClient {
 //        System.out.println("Forecast: " + weatherByDays.toString());
 
         StringBuilder sb = new StringBuilder();
-        sb.append("Forecast for tomorrow in: " + forecast.getCity().getName()).append("\n");
+        sb.append("Forecast for tomorrow in " + forecast.getCity().getName()).append(":\n\n");
         for (TimeSlotWeather weatherByDay : weatherByDays.get(1)) {
             ZonedDateTime time = getZonedDateTime(weatherByDay);
 
-            sb.append("At ").append(time.getHour()).append("\n");
-            sb.append("Weather: " + weatherByDay.getWeather().get(0).getDescription()).append("\n");
+            sb.append("----  at ").append(time.getHour()).append(":").append(time.getMinute()).append("0").append("  ----\n");
+            sb.append("Condition: " + weatherByDay.getWeather().get(0).getDescription()).append("\n");
             sb.append("Temperature: " + (weatherByDay.getMain().getTemp().toString()) + "°C");
             sb.append("\n\n");
         }
