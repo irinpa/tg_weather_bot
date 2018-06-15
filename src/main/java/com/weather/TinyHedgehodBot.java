@@ -37,7 +37,7 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
 
 //                System.out.println("Subscriber " + entry.getKey() + " for " + entry.getValue());
             }
-        }, 0, 30, TimeUnit.SECONDS);
+        }, 0, 24, TimeUnit.HOURS);
     }
 
     @Override
