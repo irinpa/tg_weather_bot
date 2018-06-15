@@ -1,5 +1,7 @@
 package com.weather;
 
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
@@ -37,7 +39,24 @@ public class SubscriptionDAO {
         jtm.execute("delete from subscriptions where chatid = " + chatId);
     }
 
+    public Subscription check(Long chatId) {
+        try {
+            return (Subscription) jtm.queryForObject("select * from subscriptions where chatid = " + chatId, new BeanPropertyRowMapper(Subscription.class));
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
+    public void update(Long chatId, String topic) {
+        jtm.execute("update subscriptions set topic = '" + topic + "' where chatid = " + chatId);
+    }
+
     public void put(Long chatId, String topic) {
-        jtm.execute("insert into subscriptions (chatid, topic) values   (" + chatId + ",'" + topic + "')");
+        Subscription sub = check(chatId);
+        if (sub != null) {
+            update(chatId, topic);
+        } else {
+            jtm.execute("insert into subscriptions (chatid, topic) values (" + chatId + ",'" + topic + "')");
+        }
     }
 }

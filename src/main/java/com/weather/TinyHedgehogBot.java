@@ -6,16 +6,17 @@ import org.telegram.telegrambots.api.objects.Update;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
+import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class TinyHedgehodBot extends TelegramLongPollingBot {
+public class TinyHedgehogBot extends TelegramLongPollingBot {
     private final WeatherApiClient weatherApi;
     private final SubscriptionDAO dao;
 
-    public TinyHedgehodBot(SubscriptionDAO dao) {
+    public TinyHedgehogBot(SubscriptionDAO dao) {
         weatherApi = new WeatherApiClient();
         this.dao = dao;
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
@@ -31,8 +32,13 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
                             .setText(forecast);
 
                     send(message);
-                } catch (Exception e) {
+                } catch (IOException e) {
                     e.printStackTrace();
+                } catch (CityNotFoundException | OtherException e) {
+                    SendMessage message = new SendMessage()
+                            .setChatId(entry.getChatId())
+                            .setText(e.getMessage());
+                    send(message);
                 }
 
 //                System.out.println("Subscriber " + entry.getKey() + " for " + entry.getValue());
@@ -76,8 +82,12 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
                                 .setText(String.valueOf(response));
                     }
                 }
-            } catch (Exception e) {
+            } catch (IOException e) {
                 e.printStackTrace();
+            } catch (CityNotFoundException | OtherException e) {
+                outgoing = new SendMessage()
+                        .setChatId(message.getChatId())
+                        .setText(e.getMessage());
             }
             send(outgoing);
         }
@@ -100,6 +110,21 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
                         .setText("Sorry to see you leave :(");
                 send(outgoing);
                 break;
+            case start:
+                outgoing = new SendMessage()
+                        .setChatId(message.getChatId())
+                        .setText("Hey! To get current weather and forecast for tomorrow, share your geolocation " +
+                                "or send me the name of the city. \n\n If you'd like to subscribe to daily forecast, " +
+                                "send me the \n[/subscribe City name] command, e.g. [/subscribe Severodvinsk]. \n\n" +
+                                "If you'd like to unsubscribe, send me the \n[/unsubscribe] command. ");
+                send(outgoing);
+                break;
+            case error:
+                outgoing = new SendMessage()
+                        .setChatId(message.getChatId())
+                        .setText("Please try again. The right format is [/subscribe City name], e.g. [/subscribe Moscow]");
+                send(outgoing);
+                break;
         }
     }
 
@@ -107,15 +132,15 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
     private SubscriptionCommand getCommand(String text) {
         if (text.startsWith("/subscribe")) {
             if (text.length() <= 10) {
-                System.out.println("Please try again. The right format is [/subscribe City name], e.g. [/subscribe Moscow]");
-                return null;
+                return new SubscriptionCommand(Command.error, null);
             } else {
                 String topic = text.substring(11);
                 return new SubscriptionCommand(Command.subscribe, topic);
             }
         } else if (text.equals("/unsubscribe")) {
             return new SubscriptionCommand(Command.unsubscribe, null);
-           /* return Command.unsubscribe;*/
+        } else if (text.equals("/start")) {
+            return new SubscriptionCommand(Command.start, null);
         } else {
             return null;
         }

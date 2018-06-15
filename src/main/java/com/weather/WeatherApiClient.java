@@ -5,6 +5,7 @@ import com.weather.model.*;
 import com.weather.model.Main;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -26,7 +27,7 @@ public class WeatherApiClient {
         gson = new Gson();
     }
 
-    public <T> T getResponseFromOWM(String query, Class<T> clazz) throws Exception {
+    public <T> T getResponseFromOWM(String query, Class<T> clazz) throws CityNotFoundException, OtherException, IOException {
 
         String urlString = BASEURL + query + UNITMETRIC + APIIDEND;
 
@@ -37,7 +38,30 @@ public class WeatherApiClient {
         System.out.println("Sending 'GET' request to URL : " + url);
         System.out.println("Response code: " + con.getResponseCode());
 
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+        int status = con.getResponseCode();
+
+        if (status == 200) {
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                StringBuilder response = new StringBuilder();
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                System.out.println("JSON: " + response.toString());
+                return gson.fromJson((response.toString()), clazz);
+            }
+
+        } else if (status == 404) {
+            throw new CityNotFoundException("City not found! Please try again.");
+
+        } else {
+            throw new OtherException("Some problem occurred. Please try again");
+        }
+
+
+
+/*        try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
             StringBuilder response = new StringBuilder();
             String inputLine;
             while ((inputLine = in.readLine()) != null) {
@@ -45,42 +69,42 @@ public class WeatherApiClient {
             }
             System.out.println("JSON: " + response.toString());
             return gson.fromJson((response.toString()), clazz);
-        }
+        }*/
     }
 
-    public String getWeatherByLocation(Float latitude, Float longitude) throws Exception {
+    public String getWeatherByLocation(Float latitude, Float longitude) throws OtherException, CityNotFoundException, IOException {
         String query = CURRENTWEATHERPATH + "lat=" + latitude + "&lon=" + longitude;
         return getCurrentWeatherByQuery(query);
     }
 
-    public String getWeatherByText(String text) throws Exception {
+    public String getWeatherByText(String text) throws OtherException, CityNotFoundException, IOException {
         String query = CURRENTWEATHERPATH + "q=" + text;
         return getCurrentWeatherByQuery(query);
     }
 
-    public String getForecastByText(String topic) throws Exception {
+    public String getForecastByText(String topic) throws OtherException, CityNotFoundException, IOException {
         String query = FORECASTPATH + "q=" + topic;
         return getForecastByQuery(query);
     }
 
-    public String getForecastByLocation(Float latitude, Float longitude) throws Exception {
+    public String getForecastByLocation(Float latitude, Float longitude) throws OtherException, CityNotFoundException, IOException {
         String query = FORECASTPATH + "lat=" + latitude + "&lon=" + longitude;
         return getForecastByQuery(query);
     }
 
-    private String getForecastByQuery(String query) throws Exception {
+    private String getForecastByQuery(String query) throws OtherException, CityNotFoundException, IOException {
         Forecast forecast = getResponseFromOWM(query, Forecast.class);
         return forecastToString(forecast);
     }
 
-    private String getCurrentWeatherByQuery(String query) throws Exception {
+    private String getCurrentWeatherByQuery(String query) throws OtherException, CityNotFoundException, IOException {
         CurrentWeather currentWeather = getResponseFromOWM(query, CurrentWeather.class);
         return weatherToString(currentWeather);
     }
 
     private String weatherToString(CurrentWeather currentWeather) {
         List<Weather> weathers = currentWeather.getWeather();
-        Weather weather = weathers.get(0);  // TODO why always 0
+        Weather weather = weathers.get(0);
         Main main = currentWeather.getMain();
         StringBuilder sb = new StringBuilder();
         return sb.append("Current weather for " + currentWeather.getName()).append(":\n\n")

@@ -30,7 +30,7 @@ public class Main {
         TelegramBotsApi botsApi = new TelegramBotsApi();
 
         try {
-            TinyHedgehodBot bot = new TinyHedgehodBot(dao);
+            TinyHedgehogBot bot = new TinyHedgehogBot(dao);
             botsApi.registerBot(bot);
         } catch (TelegramApiException e) {
             e.printStackTrace();

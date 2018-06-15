@@ -4,6 +4,8 @@ public class Subscription {
     private Long chatId;
     private String topic;
 
+    public Subscription() {
+    }
 
     public Subscription(Long chatId, String topic) {
         this.chatId = chatId;

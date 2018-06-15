@@ -1,6 +1,8 @@
 package com.weather;
 
 public enum Command {
+    start,
     subscribe,
-    unsubscribe
+    unsubscribe,
+    error
 }
