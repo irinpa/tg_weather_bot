@@ -6,30 +6,28 @@ import org.telegram.telegrambots.api.objects.Update;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TinyHedgehodBot extends TelegramLongPollingBot {
     private final WeatherApiClient weatherApi;
-    private final Map<Long, String> subscriptions;
+    private final SubscriptionDAO dao;
 
-    public TinyHedgehodBot() {
+    public TinyHedgehodBot(SubscriptionDAO dao) {
         weatherApi = new WeatherApiClient();
-        subscriptions = new ConcurrentHashMap<>();
+        this.dao = dao;
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
         executor.scheduleAtFixedRate(() -> {
 //            System.out.println("=====");
 
-            for (Map.Entry<Long, String> entry : subscriptions.entrySet()) {
+            for (Subscription entry : this.dao.getAll()) {
                 try {
-                    String forecast = weatherApi.getForecastByText(entry.getValue());
+                    String forecast = weatherApi.getForecastByText(entry.getTopic());
 
                     SendMessage message = new SendMessage()
-                            .setChatId(entry.getKey())
+                            .setChatId(entry.getChatId())
                             .setText(forecast);
 
                     send(message);
@@ -42,7 +40,6 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
         }, 0, 30, TimeUnit.SECONDS);
     }
 
-
     @Override
     public void onUpdateReceived(Update update) {
         Optional<Message> optional = Optional.ofNullable(update.getMessage());
@@ -54,20 +51,19 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
             try {
                 if (message.getLocation() != null) {
 
-                    StringBuilder response = new StringBuilder();
-                    response.append(weatherApi.getWeatherByLocation(message.getLocation().getLatitude(),
-                            message.getLocation().getLongitude())).append("\n")
-                            .append(weatherApi.getForecastByLocation(message.getLocation().getLatitude(),
-                                    message.getLocation().getLongitude()));
-                    /*String response1 = weatherApi.getWeatherByLocation(message.getLocation().getLatitude(),
-                            message.getLocation().getLongitude());
-                    String response2 = weatherApi.getForecastByLocation((message.getLocation().getLatitude(),
-                            message.getLocation().getLongitude());*/
+                    Float latitude = message.getLocation().getLatitude();
+                    Float longitude = message.getLocation().getLongitude();
+
+                    String currentWeather = weatherApi.getWeatherByLocation(latitude, longitude);
+                    String forecast = weatherApi.getForecastByLocation(latitude, longitude);
+
+                    String response = currentWeather + "\n" + forecast;
+
                     outgoing = new SendMessage()
                             .setChatId(message.getChatId())
-                            .setText(String.valueOf(response));
+                            .setText(response);
                 } else if (message.getText() != null) {
-                    Subscription subscription = getCommand(message.getText());
+                    SubscriptionCommand subscription = getCommand(message.getText());
                     if (subscription != null) {
                         processCommand(subscription, message);
                     } else {
@@ -87,10 +83,10 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
         }
     }
 
-    private void processCommand(Subscription subscription, Message message) {
+    private void processCommand(SubscriptionCommand subscription, Message message) {
         switch (subscription.getCommand()) {
             case subscribe:
-                subscriptions.put(message.getChatId(), subscription.getTopic());
+                dao.put(message.getChatId(), subscription.getTopic());
                 SendMessage outgoing = new SendMessage()
                         .setChatId(message.getChatId())
                         .setText("Congratulations! You have just subscribed to " + subscription.getTopic() + " weather forecast.");
@@ -98,7 +94,7 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
 
                 break;
             case unsubscribe:
-                subscriptions.remove(message.getChatId());
+                dao.remove(message.getChatId());
                 outgoing = new SendMessage()
                         .setChatId(message.getChatId())
                         .setText("Sorry to see you leave :(");
@@ -108,15 +104,17 @@ public class TinyHedgehodBot extends TelegramLongPollingBot {
     }
 
     // "/subscribe london"
-    private Subscription getCommand(String text) {
+    private SubscriptionCommand getCommand(String text) {
         if (text.startsWith("/subscribe")) {
-            // TODO validate text for length
-            // send warning instead of subscription
-            String topic = text.substring(11);
-            return new Subscription(Command.subscribe, topic);
-            /*return Command.subscribe;*/
+            if (text.length() <= 10) {
+                System.out.println("Please try again. The right format is [/subscribe City name], e.g. [/subscribe Moscow]");
+                return null;
+            } else {
+                String topic = text.substring(11);
+                return new SubscriptionCommand(Command.subscribe, topic);
+            }
         } else if (text.equals("/unsubscribe")) {
-            return new Subscription(Command.unsubscribe, null);
+            return new SubscriptionCommand(Command.unsubscribe, null);
            /* return Command.unsubscribe;*/
         } else {
             return null;

@@ -2,6 +2,7 @@ package com.weather;
 
 import com.google.gson.Gson;
 import com.weather.model.*;
+import com.weather.model.Main;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
